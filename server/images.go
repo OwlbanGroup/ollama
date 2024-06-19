@@ -68,7 +68,7 @@ type Model struct {
 	License        []string
 	Digest         string
 	Options        map[string]interface{}
-	Messages       []Message
+	Messages       []api.Message
 
 	Template *template.Template
 }
@@ -187,11 +187,6 @@ func (m *Model) String() string {
 	}
 
 	return modelfile.String()
-}
-
-type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
 }
 
 type ConfigV2 struct {
