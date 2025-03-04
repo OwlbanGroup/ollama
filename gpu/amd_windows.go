@@ -15,23 +15,27 @@ import (
 )
 
 const (
+	// Memory limit for integrated GPUs
+	IGPUMemLimit      = 2048 // Example value in MB
+	rocmMinimumMemory  = 4096 // Example value in MB
 
-	// TODO  We're lookinng for this exact name to detect iGPUs since hipGetDeviceProperties never reports integrated==true
+	// TODO  We're looking for this exact name to detect iGPUs since hipGetDeviceProperties never reports integrated==true
 	iGPUName = "AMD Radeon(TM) Graphics"
 )
 
 var (
 	// Used to validate if the given ROCm lib is usable
-	ROCmLibGlobs          = []string{"hipblas.dll", "rocblas"}                 // This is not sufficient to discern v5 vs v6
-	RocmStandardLocations = []string{"C:\\Program Files\\AMD\\ROCm\\6.1\\bin"} // TODO glob?
+	ROCmLibGlobs = []string{"hipblas.dll", "rocblas"} // This is not sufficient to discern v5 vs v6
+	resp         []RocmGPUInfo
+	hl           *HipLib
+	err          error
 )
 
-func AMDGetGPUInfo() []RocmGPUInfo {
-	resp := []RocmGPUInfo{}
-	hl, err := NewHipLib()
+func init() {
+	hl, err = NewHipLib()
 	if err != nil {
 		slog.Debug(err.Error())
-		return nil
+		return
 	}
 	defer hl.Release()
 
@@ -44,12 +48,13 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 	// Note: the HIP library automatically handles subsetting to any HIP_VISIBLE_DEVICES the user specified
 	count := hl.HipGetDeviceCount()
 	if count == 0 {
-		return nil
+		return
 	}
 	libDir, err := AMDValidateLibDir()
 	if err != nil {
 		slog.Warn("unable to verify rocm library, will use cpu", "error", err)
-		return nil
+		slog.Info("Falling back to CPU mode due to ROCm library verification failure.")
+		return
 	}
 
 	var supported []string
@@ -58,18 +63,22 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 		supported, err = GetSupportedGFX(libDir)
 		if err != nil {
 			slog.Warn("failed to lookup supported GFX types, falling back to CPU mode", "error", err)
-			return nil
+			slog.Info("No supported GFX types found, reverting to CPU mode.")
+			return
 		}
 	} else {
 		slog.Info("skipping rocm gfx compatibility check", "HSA_OVERRIDE_GFX_VERSION", gfxOverride)
 	}
 
 	slog.Debug("detected hip devices", "count", count)
+	slog.Info("Initializing GPU detection process...")
+
 	// TODO how to determine the underlying device ID when visible devices is causing this to subset?
 	for i := range count {
 		err = hl.HipSetDevice(i)
 		if err != nil {
 			slog.Warn("set device", "id", i, "error", err)
+			slog.Info(fmt.Sprintf("Failed to set device %d, skipping...", i))
 			continue
 		}
 
@@ -86,7 +95,7 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 		gfx := string(props.GcnArchName[:n])
 		slog.Debug("hip device", "id", i, "name", name, "gfx", gfx)
 		//slog.Info(fmt.Sprintf("[%d] Integrated: %d", i, props.iGPU)) // DOESN'T REPORT CORRECTLY!  Always 0
-		// TODO  Why isn't props.iGPU accurate!?
+		// TODO  Why isn't props.iGPU accurate!? 
 		if strings.EqualFold(name, iGPUName) {
 			slog.Info("unsupported Radeon iGPU detected skipping", "id", i, "name", name, "gfx", gfx)
 			continue
@@ -106,6 +115,7 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 		freeMemory, totalMemory, err := hl.HipMemGetInfo()
 		if err != nil {
 			slog.Warn("get mem info", "id", i, "error", err)
+			slog.Info(fmt.Sprintf("Could not retrieve memory info for device %d, skipping...", i))
 			continue
 		}
 
@@ -116,7 +126,11 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 		}
 
 		slog.Debug("amdgpu memory", "gpu", i, "total", format.HumanBytes2(totalMemory))
+		slog.Info(fmt.Sprintf("Total memory for GPU %d: %s", i, format.HumanBytes2(totalMemory)))
+
 		slog.Debug("amdgpu memory", "gpu", i, "available", format.HumanBytes2(freeMemory))
+		slog.Info(fmt.Sprintf("Available memory for GPU %d: %s", i, format.HumanBytes2(freeMemory)))
+
 		gpuInfo := RocmGPUInfo{
 			GpuInfo: GpuInfo{
 				Library: "rocm",
@@ -140,8 +154,6 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 
 		resp = append(resp, gpuInfo)
 	}
-
-	return resp
 }
 
 func AMDValidateLibDir() (string, error) {

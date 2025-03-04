@@ -9,13 +9,11 @@ import (
 )
 
 func TestBasicGetGPUInfo(t *testing.T) {
-	info := GetGPUInfo()
-	assert.NotEmpty(t, len(info))
-	assert.Contains(t, "cuda rocm cpu metal", info[0].Library)
-	if info[0].Library != "cpu" {
-		assert.Greater(t, info[0].TotalMemory, uint64(0))
-		assert.Greater(t, info[0].FreeMemory, uint64(0))
-	}
+	vram, physicalMemory, freeMemory := GetGPUInfo()
+	assert.Greater(t, vram, uint64(0))
+	assert.Greater(t, physicalMemory, uint64(0))
+	assert.Greater(t, freeMemory, uint64(0))
+
 }
 
 func TestCPUMemInfo(t *testing.T) {

@@ -8,12 +8,23 @@ func TestGGMLMethods(t *testing.T) {
 	// Example test case for GGML struct
 	t.Run("TestGGMLInitialization", func(t *testing.T) {
 		ggml := GGML{
-			// Initialize with appropriate values
+		// Initialize with appropriate values
+
+
 		}
-		if ggml.SomeField != expectedValue {
-			t.Errorf("Expected %v, got %v", expectedValue, ggml.SomeField)
-		}
+		// Removed check for undefined SomeField
 	})
 
-	// Add more test cases for other methods and functionalities of GGML
+	t.Run("TestGetGPUInfo", func(t *testing.T) {
+		vram, physicalMemory, freeMemory := GetGPUInfo()
+		if vram == 0 {
+			t.Error("Expected non-zero VRAM")
+		}
+		if physicalMemory == 0 {
+			t.Error("Expected non-zero Physical Memory")
+		}
+		if freeMemory == 0 {
+			t.Error("Expected non-zero Free Memory")
+		}
+	})
 }

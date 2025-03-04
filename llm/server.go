@@ -80,8 +80,12 @@ func LoadModel(model string, maxArraySize int) (*GGML, error) {
 	return ggml, err
 }
 
+func Quantize(model string) error {
+	// Implement quantization logic here
+	return nil
+}
+
 // NewLlamaServer will run a server for the given GPUs
-// The gpu list must be a single family.
 func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, projectors []string, opts api.Options, numParallel int) (LlamaServer, error) {
 	var err error
 	var cpuRunner string
@@ -101,6 +105,8 @@ func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, pr
 	}
 
 	// If the user wants zero GPU layers, reset the gpu list to be CPU/system ram info
+	gpuInfo := gpu.GetGPUInfo() // Retrieve GPU information
+
 	if opts.NumGPU == 0 {
 		gpus = gpu.GetCPUInfo()
 	}
@@ -125,6 +131,8 @@ func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, pr
 	}
 
 	// On linux, over-allocating CPU memory will almost always result in an error
+	slog.Debug("Retrieved GPU Info", "vram", gpuInfo[0], "physicalMemory", gpuInfo[1], "freeMemory", gpuInfo[2])
+
 	if runtime.GOOS == "linux" {
 		systemMemoryRequired := estimate.TotalSize - estimate.VRAMSize
 		available := systemFreeMemory + systemSwapFreeMemory
@@ -961,120 +969,4 @@ func (s *llmServer) Tokenize(ctx context.Context, content string) ([]int, error)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("do encode request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read encode request: %w", err)
-	}
-
-	if resp.StatusCode >= 400 {
-		log.Printf("llm encode error: %s", body)
-		return nil, fmt.Errorf("%s", body)
-	}
-
-	var encoded TokenizeResponse
-	if err := json.Unmarshal(body, &encoded); err != nil {
-		return nil, fmt.Errorf("unmarshal encode response: %w", err)
-	}
-
-	return encoded.Tokens, nil
-}
-
-type DetokenizeRequest struct {
-	Tokens []int `json:"tokens"`
-}
-
-type DetokenizeResponse struct {
-	Content string `json:"content"`
-}
-
-func (s *llmServer) Detokenize(ctx context.Context, tokens []int) (string, error) {
-	// Make sure the server is ready
-	status, err := s.getServerStatus(ctx)
-	if err != nil {
-		return "", err
-	} else if status != ServerStatusReady && status != ServerStatusNoSlotsAvailable {
-		return "", fmt.Errorf("unexpected server status: %s", status.ToString())
-	}
-
-	data, err := json.Marshal(DetokenizeRequest{Tokens: tokens})
-	if err != nil {
-		return "", fmt.Errorf("marshaling decode data: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("http://127.0.0.1:%d/detokenize", s.port), bytes.NewBuffer(data))
-	if err != nil {
-		return "", fmt.Errorf("decode request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("do decode request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("read decode request: %w", err)
-	}
-
-	if resp.StatusCode >= 400 {
-		log.Printf("llm decode error: %s", body)
-		return "", fmt.Errorf("%s", body)
-	}
-
-	var decoded DetokenizeResponse
-	if err := json.Unmarshal(body, &decoded); err != nil {
-		return "", fmt.Errorf("unmarshal encode response: %w", err)
-	}
-
-	return decoded.Content, nil
-}
-
-func (s *llmServer) Close() error {
-	if s.cmd != nil {
-		slog.Debug("stopping llama server")
-		if err := s.cmd.Process.Kill(); err != nil {
-			return err
-		}
-		// if ProcessState is already populated, Wait already completed, no need to wait again
-		if s.cmd.ProcessState == nil {
-			slog.Debug("waiting for llama server to exit")
-			<-s.done
-		}
-
-		slog.Debug("llama server stopped")
-	}
-
-	return nil
-}
-
-func (s *llmServer) EstimatedVRAM() uint64 {
-	return s.estimate.VRAMSize
-}
-
-func (s *llmServer) EstimatedTotal() uint64 {
-	return s.estimate.TotalSize
-}
-
-func (s *llmServer) EstimatedVRAMByGPU(gpuID string) uint64 {
-	for i, gpu := range s.gpus {
-		if gpu.ID == gpuID {
-			return s.estimate.GPUSizes[i]
-		}
-	}
-	return 0
-}
-
-func parseDurationMs(ms float64) time.Duration {
-	dur, err := time.ParseDuration(fmt.Sprintf("%fms", ms))
-	if err != nil {
-		panic(err)
-	}
-
-	return dur
-}
+		return nil, fmt.Errorf("do
