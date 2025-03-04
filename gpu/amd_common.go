@@ -11,7 +11,14 @@ import (
 	"strings"
 )
 
+var RocmStandardLocations = []string{
+    "/opt/rocm/lib",
+    "/usr/lib/rocm",
+    "/usr/local/lib/rocm",
+}
+
 // Determine if the given ROCm lib directory is usable by checking for existence of some glob patterns
+
 func rocmLibUsable(libDir string) bool {
 	slog.Debug("evaluating potential rocm lib dir " + libDir)
 	for _, g := range ROCmLibGlobs {
