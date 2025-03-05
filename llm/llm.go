@@ -16,7 +16,32 @@ import (
 	"unsafe"
 )
 
-// SystemInfo is an unused example of calling llama.cpp functions using CGo
+// CompletionResponse represents the response structure for completions.
+type CompletionResponse struct {
+	DoneReason         string  `json:"done_reason"`
+	PromptEvalCount    int     `json:"prompt_eval_count"`
+	PromptEvalDuration float64 `json:"prompt_eval_duration"`
+	EvalCount          int     `json:"eval_count"`
+	EvalDuration       float64 `json:"eval_duration"`
+}
+
+// ImageData represents image-related data.
+type ImageData struct {
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+	URL    string `json:"url"`
+}
+
+// CompletionRequest represents the request structure for completions.
+type CompletionRequest struct {
+	Prompt     string `json:"prompt"`
+	MaxTokens  int    `json:"max_tokens"`
+	Temperature float64 `json:"temperature"`
+	TopP       float64 `json:"top_p"`
+	Images     []ImageData `json:"images,omitempty"`
+	Format     string `json:"format,omitempty"`
+}
+
 func SystemInfo() string {
 	return C.GoString(C.llama_print_system_info())
 }

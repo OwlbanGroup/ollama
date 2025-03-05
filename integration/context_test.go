@@ -11,8 +11,14 @@ import (
 )
 
 func TestContextExhaustion(t *testing.T) {
-	// Longer needed for small footprint GPUs
+	startTime := time.Now() // Start time for logging duration
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer func() {
+		duration := time.Since(startTime)
+		t.Logf("TestContextExhaustion completed in %v", duration) // Log the duration of the test
+	}()
+
 	defer cancel()
 	// Set up the test data
 	req := api.GenerateRequest{

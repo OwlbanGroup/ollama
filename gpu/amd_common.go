@@ -17,7 +17,13 @@ var RocmStandardLocations = []string{
     "/usr/local/lib/rocm",
 }
 
+var projectorMemoryRequirements = map[string]int{
+    "minimum": 2048, // Minimum memory requirement in MB
+    "recommended": 4096, // Recommended memory requirement in MB
+}
+
 // Determine if the given ROCm lib directory is usable by checking for existence of some glob patterns
+
 
 func rocmLibUsable(libDir string) bool {
 	slog.Debug("evaluating potential rocm lib dir " + libDir)

@@ -19,6 +19,8 @@ import (
 )
 
 func TestMaxQueue(t *testing.T) {
+	startTime := time.Now() // Start time for logging duration
+
 	if os.Getenv("OLLAMA_TEST_EXISTING") != "" {
 		t.Skip("Max Queue test requires spawing a local server so we can adjust the queue size")
 		return
@@ -46,8 +48,12 @@ func TestMaxQueue(t *testing.T) {
 	}
 	resp := []string{"explore", "discover", "ocean"}
 
-	// CPU mode takes much longer at the limit with a large queue setting
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer func() {
+		duration := time.Since(startTime)
+		t.Logf("TestMaxQueue completed in %v", duration) // Log the duration of the test
+	}()
+
 	defer cancel()
 	client, _, cleanup := InitServerConnection(ctx, t)
 	defer cleanup()
@@ -55,12 +61,6 @@ func TestMaxQueue(t *testing.T) {
 	require.NoError(t, PullIfMissing(ctx, client, req.Model))
 
 	// Context for the worker threads so we can shut them down
-	// embedCtx, embedCancel := context.WithCancel(ctx)
-	embedCtx := ctx
-
-	var genwg sync.WaitGroup
-	go func() {
-		genwg.Add(1)
 		defer genwg.Done()
 		slog.Info("Starting generate request")
 		DoGenerate(ctx, t, client, req, resp, 45*time.Second, 5*time.Second)

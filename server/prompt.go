@@ -62,13 +62,15 @@ func chatPrompt(ctx context.Context, m *Model, tokenize tokenizeFunc, opts *api.
 	}
 
 	for _, m := range msgs[n:] {
-		for _, i := range m.Images {
-			images = append(images, llm.ImageData{
-				ID:   len(images),
-				Data: i,
-			})
+	for _, i := range m.Images {
+		imageData := llm.ImageData{
+			Width:  i.Width,
+			Height: i.Height,
+			URL:    i.URL,
 		}
-	}
 
-	return b.String(), images, nil
+			images = append(images, llm.ImageData{
+				Width:  i.Width,
+				Height: i.Height,
+				URL:    i.URL,
 }
