@@ -42,7 +42,9 @@ import (
 	"github.com/ollama/ollama/types/errtypes"
 	"github.com/ollama/ollama/types/model"
 	"github.com/ollama/ollama/version"
+
 )
+
 
 func CreateHandler(cmd *cobra.Command, args []string) error {
 	filename, _ := cmd.Flags().GetString("file")
@@ -145,9 +147,8 @@ func CreateHandler(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	quantize, _ := cmd.Flags().GetString("quantize")
+	request := api.CreateRequest{Name: args[0], Modelfile: modelfile.String()}
 
-	request := api.CreateRequest{Name: args[0], Modelfile: modelfile.String(), Quantize: quantize}
 	if err := client.Create(cmd.Context(), &request, fn); err != nil {
 		return err
 	}
@@ -1140,7 +1141,12 @@ func checkServerHeartbeat(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	if err := client.Heartbeat(cmd.Context()); err != nil {
+
+	// Set a timeout for the heartbeat check
+	ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := client.Heartbeat(ctx); err != nil {
 		if !strings.Contains(err.Error(), " refused") {
 			return err
 		}
@@ -1150,6 +1156,7 @@ func checkServerHeartbeat(cmd *cobra.Command, _ []string) error {
 	}
 	return nil
 }
+
 
 func versionHandler(cmd *cobra.Command, _ []string) {
 	client, err := api.ClientFromEnvironment()
@@ -1188,6 +1195,7 @@ Environment Variables:
 
 func NewCLI() *cobra.Command {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	cobra.EnableCommandSorting = false
 
 	if runtime.GOOS == "windows" {
@@ -1239,129 +1247,8 @@ func NewCLI() *cobra.Command {
 	showCmd.Flags().Bool("template", false, "Show template of a model")
 	showCmd.Flags().Bool("system", false, "Show system message of a model")
 
-	runCmd := &cobra.Command{
-		Use:     "run MODEL [PROMPT]",
-		Short:   "Run a model",
-		Args:    cobra.MinimumNArgs(1),
-		PreRunE: checkServerHeartbeat,
-		RunE:    RunHandler,
-	}
-
-	runCmd.Flags().String("keepalive", "", "Duration to keep a model loaded (e.g. 5m)")
-	runCmd.Flags().Bool("verbose", false, "Show timings for response")
-	runCmd.Flags().Bool("insecure", false, "Use an insecure registry")
-	runCmd.Flags().Bool("nowordwrap", false, "Don't wrap words to the next line automatically")
-	runCmd.Flags().String("format", "", "Response format (e.g. json)")
-	serveCmd := &cobra.Command{
-		Use:     "serve",
-		Aliases: []string{"start"},
-		Short:   "Start ollama",
-		Args:    cobra.ExactArgs(0),
-		RunE:    RunServer,
-	}
-
-	pullCmd := &cobra.Command{
-		Use:     "pull MODEL",
-		Short:   "Pull a model from a registry",
-		Args:    cobra.ExactArgs(1),
-		PreRunE: checkServerHeartbeat,
-		RunE:    PullHandler,
-	}
-
-	pullCmd.Flags().Bool("insecure", false, "Use an insecure registry")
-
-	pushCmd := &cobra.Command{
-		Use:     "push MODEL",
-		Short:   "Push a model to a registry",
-		Args:    cobra.ExactArgs(1),
-		PreRunE: checkServerHeartbeat,
-		RunE:    PushHandler,
-	}
-
-	pushCmd.Flags().Bool("insecure", false, "Use an insecure registry")
-
-	listCmd := &cobra.Command{
-		Use:     "list",
-		Aliases: []string{"ls"},
-		Short:   "List models",
-		PreRunE: checkServerHeartbeat,
-		RunE:    ListHandler,
-	}
-
-	psCmd := &cobra.Command{
-		Use:     "ps",
-		Short:   "List running models",
-		PreRunE: checkServerHeartbeat,
-		RunE:    ListRunningHandler,
-	}
-
-	copyCmd := &cobra.Command{
-		Use:     "cp SOURCE DESTINATION",
-		Short:   "Copy a model",
-		Args:    cobra.ExactArgs(2),
-		PreRunE: checkServerHeartbeat,
-		RunE:    CopyHandler,
-	}
-
-	deleteCmd := &cobra.Command{
-		Use:     "rm MODEL [MODEL...]",
-		Short:   "Remove a model",
-		Args:    cobra.MinimumNArgs(1),
-		PreRunE: checkServerHeartbeat,
-		RunE:    DeleteHandler,
-	}
-
-	envVars := envconfig.AsMap()
-
-	envs := []envconfig.EnvVar{envVars["OLLAMA_HOST"]}
-
-	for _, cmd := range []*cobra.Command{
-		createCmd,
-		showCmd,
-		runCmd,
-		pullCmd,
-		pushCmd,
-		listCmd,
-		psCmd,
-		copyCmd,
-		deleteCmd,
-		serveCmd,
-	} {
-		switch cmd {
-		case runCmd:
-			appendEnvDocs(cmd, []envconfig.EnvVar{envVars["OLLAMA_HOST"], envVars["OLLAMA_NOHISTORY"]})
-		case serveCmd:
-			appendEnvDocs(cmd, []envconfig.EnvVar{
-				envVars["OLLAMA_DEBUG"],
-				envVars["OLLAMA_HOST"],
-				envVars["OLLAMA_KEEP_ALIVE"],
-				envVars["OLLAMA_MAX_LOADED_MODELS"],
-				envVars["OLLAMA_MAX_QUEUE"],
-				envVars["OLLAMA_MODELS"],
-				envVars["OLLAMA_NUM_PARALLEL"],
-				envVars["OLLAMA_NOPRUNE"],
-				envVars["OLLAMA_ORIGINS"],
-				envVars["OLLAMA_TMPDIR"],
-				envVars["OLLAMA_FLASH_ATTENTION"],
-				envVars["OLLAMA_LLM_LIBRARY"],
-			})
-		default:
-			appendEnvDocs(cmd, envs)
-		}
-	}
-
-	rootCmd.AddCommand(
-		serveCmd,
-		createCmd,
-		showCmd,
-		runCmd,
-		pullCmd,
-		pushCmd,
-		listCmd,
-		psCmd,
-		copyCmd,
-		deleteCmd,
-	)
+	rootCmd.AddCommand(createCmd)
+	rootCmd.AddCommand(showCmd)
 
 	return rootCmd
 }

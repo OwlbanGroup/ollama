@@ -7,11 +7,19 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
+
 var RocmStandardLocations = []string{
+    "lib/*.so",
+    "lib/*.a",
+    "lib/*.dylib",
+
+    "lib/*.so",
+    "lib/*.a",
+    "lib/*.dylib",
+
     "/opt/rocm/lib",
     "/usr/lib/rocm",
     "/usr/local/lib/rocm",
@@ -25,7 +33,14 @@ var projectorMemoryRequirements = map[string]int{
 // Determine if the given ROCm lib directory is usable by checking for existence of some glob patterns
 
 
+var ROCmLibGlobs = []string{
+    "lib/*.so",
+    "lib/*.a",
+    "lib/*.dylib",
+}
+
 func rocmLibUsable(libDir string) bool {
+
 	slog.Debug("evaluating potential rocm lib dir " + libDir)
 	for _, g := range ROCmLibGlobs {
 		res, _ := filepath.Glob(filepath.Join(libDir, g))

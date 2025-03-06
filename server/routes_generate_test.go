@@ -420,7 +420,7 @@ func TestGenerate(t *testing.T) {
 	}
 
 	t.Run("missing body", func(t *testing.T) {
-		w := createRequest(t, s.GenerateHandler, nil)
+		w := createRequest(t, s.ChatHandler, nil)
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("expected status 400, got %d", w.Code)
 		}
@@ -431,7 +431,7 @@ func TestGenerate(t *testing.T) {
 	})
 
 	t.Run("missing model", func(t *testing.T) {
-		w := createRequest(t, s.GenerateHandler, api.GenerateRequest{})
+		w := createRequest(t, s.ChatHandler, api.ChatRequest{})
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("expected status 400, got %d", w.Code)
 		}
@@ -441,7 +441,7 @@ func TestGenerate(t *testing.T) {
 		}
 	})
 
-	t.Run("missing capabilities generate", func(t *testing.T) {
+	t.Run("missing capabilities chat", func(t *testing.T) {
 		w := createRequest(t, s.CreateModelHandler, api.CreateRequest{
 			Model: "bert",
 			Modelfile: fmt.Sprintf("FROM %s", createBinFile(t, llm.KV{
@@ -455,7 +455,7 @@ func TestGenerate(t *testing.T) {
 			t.Fatalf("expected status 200, got %d", w.Code)
 		}
 
-		w = createRequest(t, s.GenerateHandler, api.GenerateRequest{
+		w = createRequest(t, s.ChatHandler, api.ChatRequest{
 			Model: "bert",
 		})
 
@@ -463,29 +463,13 @@ func TestGenerate(t *testing.T) {
 			t.Errorf("expected status 400, got %d", w.Code)
 		}
 
-		if diff := cmp.Diff(w.Body.String(), `{"error":"\"bert\" does not support generate"}`); diff != "" {
-			t.Errorf("mismatch (-got +want):\n%s", diff)
-		}
-	})
-
-	t.Run("missing capabilities suffix", func(t *testing.T) {
-		w := createRequest(t, s.GenerateHandler, api.GenerateRequest{
-			Model:  "test",
-			Prompt: "def add(",
-			Suffix: "    return c",
-		})
-
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("expected status 400, got %d", w.Code)
-		}
-
-		if diff := cmp.Diff(w.Body.String(), `{"error":"test does not support insert"}`); diff != "" {
+		if diff := cmp.Diff(w.Body.String(), `{"error":"\"bert\" does not support chat"}`); diff != "" {
 			t.Errorf("mismatch (-got +want):\n%s", diff)
 		}
 	})
 
 	t.Run("load model", func(t *testing.T) {
-		w := createRequest(t, s.GenerateHandler, api.GenerateRequest{
+		w := createRequest(t, s.ChatHandler, api.ChatRequest{
 			Model: "test",
 		})
 
@@ -493,7 +477,7 @@ func TestGenerate(t *testing.T) {
 			t.Errorf("expected status 200, got %d", w.Code)
 		}
 
-		var actual api.GenerateResponse
+		var actual api.ChatResponse
 		if err := json.NewDecoder(w.Body).Decode(&actual); err != nil {
 			t.Fatal(err)
 		}
@@ -511,10 +495,10 @@ func TestGenerate(t *testing.T) {
 		}
 	})
 
-	checkGenerateResponse := func(t *testing.T, body io.Reader, model, content string) {
+	checkChatResponse := func(t *testing.T, body io.Reader, model, content string) {
 		t.Helper()
 
-		var actual api.GenerateResponse
+		var actual api.ChatResponse
 		if err := json.NewDecoder(body).Decode(&actual); err != nil {
 			t.Fatal(err)
 		}
@@ -531,12 +515,11 @@ func TestGenerate(t *testing.T) {
 			t.Errorf("expected done reason stop, got %s", actual.DoneReason)
 		}
 
-		if actual.Response != content {
-			t.Errorf("expected response %s, got %s", content, actual.Response)
-		}
-
-		if actual.Context == nil {
-			t.Errorf("expected context not nil")
+		if diff := cmp.Diff(actual.Message, api.Message{
+			Role:    "assistant",
+			Content: content,
+		}); diff != "" {
+			t.Errorf("mismatch (-got +want):\n%s", diff)
 		}
 
 		if actual.PromptEvalCount == 0 {
@@ -565,10 +548,12 @@ func TestGenerate(t *testing.T) {
 	}
 
 	mock.CompletionResponse.Content = "Hi!"
-	t.Run("prompt", func(t *testing.T) {
-		w := createRequest(t, s.GenerateHandler, api.GenerateRequest{
-			Model:  "test",
-			Prompt: "Hello!",
+	t.Run("messages", func(t *testing.T) {
+		w := createRequest(t, s.ChatHandler, api.ChatRequest{
+			Model: "test",
+			Messages: []api.Message{
+				{Role: "user", Content: "Hello!"},
+			},
 			Stream: &stream,
 		})
 
@@ -580,7 +565,7 @@ func TestGenerate(t *testing.T) {
 			t.Errorf("mismatch (-got +want):\n%s", diff)
 		}
 
-		checkGenerateResponse(t, w.Body, "test", "Hi!")
+		checkChatResponse(t, w.Body, "test", "Hi!")
 	})
 
 	w = createRequest(t, s.CreateModelHandler, api.CreateRequest{
@@ -592,10 +577,12 @@ func TestGenerate(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", w.Code)
 	}
 
-	t.Run("prompt with model system", func(t *testing.T) {
-		w := createRequest(t, s.GenerateHandler, api.GenerateRequest{
-			Model:  "test-system",
-			Prompt: "Hello!",
+	t.Run("messages with model system", func(t *testing.T) {
+		w := createRequest(t, s.ChatHandler, api.ChatRequest{
+			Model: "test-system",
+			Messages: []api.Message{
+				{Role: "user", Content: "Hello!"},
+			},
 			Stream: &stream,
 		})
 
@@ -607,15 +594,17 @@ func TestGenerate(t *testing.T) {
 			t.Errorf("mismatch (-got +want):\n%s", diff)
 		}
 
-		checkGenerateResponse(t, w.Body, "test-system", "Hi!")
+		checkChatResponse(t, w.Body, "test-system", "Hi!")
 	})
 
 	mock.CompletionResponse.Content = "Abra kadabra!"
-	t.Run("prompt with system", func(t *testing.T) {
-		w := createRequest(t, s.GenerateHandler, api.GenerateRequest{
-			Model:  "test-system",
-			Prompt: "Hello!",
-			System: "You can perform magic tricks.",
+	t.Run("messages with system", func(t *testing.T) {
+		w := createRequest(t, s.ChatHandler, api.ChatRequest{
+			Model: "test-system",
+			Messages: []api.Message{
+				{Role: "system", Content: "You can perform magic tricks."},
+				{Role: "user", Content: "Hello!"},
+			},
 			Stream: &stream,
 		})
 
@@ -627,17 +616,18 @@ func TestGenerate(t *testing.T) {
 			t.Errorf("mismatch (-got +want):\n%s", diff)
 		}
 
-		checkGenerateResponse(t, w.Body, "test-system", "Abra kadabra!")
+		checkChatResponse(t, w.Body, "test-system", "Abra kadabra!")
 	})
 
-	t.Run("prompt with template", func(t *testing.T) {
-		w := createRequest(t, s.GenerateHandler, api.GenerateRequest{
-			Model:  "test-system",
-			Prompt: "Help me write tests.",
-			System: "You can perform magic tricks.",
-			Template: `{{- if .System }}{{ .System }} {{ end }}
-{{- if .Prompt }}### USER {{ .Prompt }} {{ end }}
-{{- if .Response }}### ASSISTANT {{ .Response }} {{ end }}`,
+	t.Run("messages with interleaved system", func(t *testing.T) {
+		w := createRequest(t, s.ChatHandler, api.ChatRequest{
+			Model: "test-system",
+			Messages: []api.Message{
+				{Role: "user", Content: "Hello!"},
+				{Role: "assistant", Content: "I can help you with that."},
+				{Role: "system", Content: "You can perform magic tricks."},
+				{Role: "user", Content: "Help me write tests."},
+			},
 			Stream: &stream,
 		})
 
@@ -645,61 +635,223 @@ func TestGenerate(t *testing.T) {
 			t.Errorf("expected status 200, got %d", w.Code)
 		}
 
-		if diff := cmp.Diff(mock.CompletionRequest.Prompt, "You can perform magic tricks. ### USER Help me write tests. "); diff != "" {
+		if diff := cmp.Diff(mock.CompletionRequest.Prompt, "System: You are a helpful assistant. User: Hello! Assistant: I can help you with that. System: You can perform magic tricks. User: Help me write tests. "); diff != "" {
 			t.Errorf("mismatch (-got +want):\n%s", diff)
 		}
 
-		checkGenerateResponse(t, w.Body, "test-system", "Abra kadabra!")
+		checkChatResponse(t, w.Body, "test-system", "Abra kadabra!")
 	})
+}
 
-	w = createRequest(t, s.CreateModelHandler, api.CreateRequest{
-		Model: "test-suffix",
-		Modelfile: `FROM test
-TEMPLATE """{{- if .Suffix }}<PRE> {{ .Prompt }} <SUF>{{ .Suffix }} <MID>
-{{- else }}{{ .Prompt }}
-{{- end }}"""`,
+func TestGenerate(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	mock := mockRunner{
+		CompletionResponse: llm.CompletionResponse{
+			Done:               true,
+			DoneReason:         "stop",
+			PromptEvalCount:    1,
+			PromptEvalDuration: 1,
+			EvalCount:          1,
+			EvalDuration:       1,
+		},
+	}
+
+	s := Server{
+		sched: &Scheduler{
+			pendingReqCh:  make(chan *LlmRequest, 1),
+			finishedReqCh: make(chan *LlmRequest, 1),
+			expiredCh:     make(chan *runnerRef, 1),
+			unloadedCh:    make(chan any, 1),
+			loaded:        make(map[string]*runnerRef),
+			newServerFn:   newMockServer(&mock),
+			getGpuFn:      gpu.GetGPUInfo,
+			getCpuFn:      gpu.GetCPUInfo,
+			reschedDelay:  250 * time.Millisecond,
+			loadFn: func(req *LlmRequest, ggml *llm.GGML, gpus gpu.GpuInfoList, numParallel int) {
+				// add small delay to simulate loading
+				time.Sleep(time.Millisecond)
+				req.successCh <- &runnerRef{
+					llama: &mock,
+				}
+			},
+		},
+	}
+
+	go s.sched.Run(context.TODO())
+
+	w := createRequest(t, s.CreateModelHandler, api.CreateRequest{
+		Model: "test",
+		Modelfile: fmt.Sprintf(`FROM %s
+		TEMPLATE """
+{{- if .System }}System: {{ .System }} {{ end }}
+{{- if .Prompt }}User: {{ .Prompt }} {{ end }}
+{{- if .Response }}Assistant: {{ .Response }} {{ end }}"""
+`, createBinFile(t, llm.KV{
+			"general.architecture":          "llama",
+			"llama.block_count":             uint32(1),
+			"llama.context_length":          uint32(8192),
+			"llama.embedding_length":        uint32(4096),
+			"llama.attention.head_count":    uint32(32),
+			"llama.attention.head_count_kv": uint32(8),
+			"tokenizer.ggml.tokens":         []string{""},
+			"tokenizer.ggml.scores":         []float32{0},
+			"tokenizer.ggml.token_type":     []int32{0},
+		}, []llm.Tensor{
+			{Name: "token_embd.weight", Shape: []uint64{1}, WriterTo: bytes.NewReader(make([]byte, 4))},
+			{Name: "blk.0.attn_norm.weight", Shape: []uint64{1}, WriterTo: bytes.NewReader(make([]byte, 4))},
+			{Name: "blk.0.ffn_down.weight", Shape: []uint64{1}, WriterTo: bytes.NewReader(make([]byte, 4))},
+			{Name: "blk.0.ffn_gate.weight", Shape: []uint64{1}, WriterTo: bytes.NewReader(make([]byte, 4))},
+			{Name: "blk.0.ffn_up.weight", Shape: []uint64{1}, WriterTo: bytes.NewReader(make([]byte, 4))},
+			{Name: "blk.0.ffn_norm.weight", Shape: []uint64{1}, WriterTo: bytes.NewReader(make([]byte, 4))},
+			{Name: "blk.0.attn_k.weight", Shape: []uint64{1}, WriterTo: bytes.NewReader(make([]byte, 4))},
+			{Name: "blk.0.attn_output.weight", Shape: []uint64{1}, WriterTo: bytes.NewReader(make([]byte, 4))},
+			{Name: "blk.0.attn_q.weight", Shape: []uint64{1}, WriterTo: bytes.NewReader(make([]byte, 4))},
+			{Name: "blk.0.attn_v.weight", Shape: []uint64{1}, WriterTo: bytes.NewReader(make([]byte, 4))},
+			{Name: "output.weight", Shape: []uint64{1}, WriterTo: bytes.NewReader(make([]byte, 4))},
+		})),
+		Stream: &stream,
 	})
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", w.Code)
 	}
 
-	t.Run("prompt with suffix", func(t *testing.T) {
-		w := createRequest(t, s.GenerateHandler, api.GenerateRequest{
-			Model:  "test-suffix",
-			Prompt: "def add(",
-			Suffix: "    return c",
+	t.Run("missing body", func(t *testing.T) {
+		w := createRequest(t, s.ChatHandler, nil)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", w.Code)
+		}
+
+		if diff := cmp.Diff(w.Body.String(), `{"error":"model is required"}`); diff != "" {
+			t.Errorf("mismatch (-got +want):\n%s", diff)
+		}
+	})
+
+	t.Run("missing model", func(t *testing.T) {
+		w := createRequest(t, s.ChatHandler, api.ChatRequest{})
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", w.Code)
+		}
+
+		if diff := cmp.Diff(w.Body.String(), `{"error":"model is required"}`); diff != "" {
+			t.Errorf("mismatch (-got +want):\n%s", diff)
+		}
+	})
+
+	t.Run("missing capabilities chat", func(t *testing.T) {
+		w := createRequest(t, s.CreateModelHandler, api.CreateRequest{
+			Model: "bert",
+			Modelfile: fmt.Sprintf("FROM %s", createBinFile(t, llm.KV{
+				"general.architecture": "bert",
+				"bert.pooling_type":    uint32(0),
+			}, []llm.Tensor{})),
+			Stream: &stream,
+		})
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d", w.Code)
+		}
+
+		w = createRequest(t, s.ChatHandler, api.ChatRequest{
+			Model: "bert",
+		})
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", w.Code)
+		}
+
+		if diff := cmp.Diff(w.Body.String(), `{"error":"\"bert\" does not support chat"}`); diff != "" {
+			t.Errorf("mismatch (-got +want):\n%s", diff)
+		}
+	})
+
+	t.Run("load model", func(t *testing.T) {
+		w := createRequest(t, s.ChatHandler, api.ChatRequest{
+			Model: "test",
 		})
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected status 200, got %d", w.Code)
 		}
 
-		if diff := cmp.Diff(mock.CompletionRequest.Prompt, "<PRE> def add( <SUF>    return c <MID>"); diff != "" {
-			t.Errorf("mismatch (-got +want):\n%s", diff)
+		var actual api.ChatResponse
+		if err := json.NewDecoder(w.Body).Decode(&actual); err != nil {
+			t.Fatal(err)
+		}
+
+		if actual.Model != "test" {
+			t.Errorf("expected model test, got %s", actual.Model)
+		}
+
+		if !actual.Done {
+			t.Errorf("expected done true, got false")
+		}
+
+		if actual.DoneReason != "load" {
+			t.Errorf("expected done reason load, got %s", actual.DoneReason)
 		}
 	})
 
-	t.Run("prompt without suffix", func(t *testing.T) {
-		w := createRequest(t, s.GenerateHandler, api.GenerateRequest{
-			Model:  "test-suffix",
-			Prompt: "def add(",
-		})
+	checkChatResponse := func(t *testing.T, body io.Reader, model, content string) {
+		t.Helper()
 
-		if w.Code != http.StatusOK {
-			t.Errorf("expected status 200, got %d", w.Code)
+		var actual api.ChatResponse
+		if err := json.NewDecoder(body).Decode(&actual); err != nil {
+			t.Fatal(err)
 		}
 
-		if diff := cmp.Diff(mock.CompletionRequest.Prompt, "def add("); diff != "" {
+		if actual.Model != model {
+			t.Errorf("expected model test, got %s", actual.Model)
+		}
+
+		if !actual.Done {
+			t.Errorf("expected done false, got true")
+		}
+
+		if actual.DoneReason != "stop" {
+			t.Errorf("expected done reason stop, got %s", actual.DoneReason)
+		}
+
+		if diff := cmp.Diff(actual.Message, api.Message{
+			Role:    "assistant",
+			Content: content,
+		}); diff != "" {
 			t.Errorf("mismatch (-got +want):\n%s", diff)
 		}
-	})
 
-	t.Run("raw", func(t *testing.T) {
-		w := createRequest(t, s.GenerateHandler, api.GenerateRequest{
-			Model:  "test-system",
-			Prompt: "Help me write tests.",
-			Raw:    true,
+		if actual.PromptEvalCount == 0 {
+			t.Errorf("expected prompt eval count > 0, got 0")
+		}
+
+		if actual.PromptEvalDuration == 0 {
+			t.Errorf("expected prompt eval duration > 0, got 0")
+		}
+
+		if actual.EvalCount == 0 {
+			t.Errorf("expected eval count > 0, got 0")
+		}
+
+		if actual.EvalDuration == 0 {
+			t.Errorf("expected eval duration > 0, got 0")
+		}
+
+		if actual.LoadDuration == 0 {
+			t.Errorf("expected load duration > 0, got 0")
+		}
+
+		if actual.TotalDuration == 0 {
+			t.Errorf("expected total duration > 0, got 0")
+		}
+	}
+
+	mock.CompletionResponse.Content = "Hi!"
+	t.Run("messages", func(t *testing.T) {
+		w := createRequest(t, s.ChatHandler, api.ChatRequest{
+			Model: "test",
+			Messages: []api.Message{
+				{Role: "user", Content: "Hello!"},
+			},
 			Stream: &stream,
 		})
 
@@ -707,8 +859,11 @@ TEMPLATE """{{- if .Suffix }}<PRE> {{ .Prompt }} <SUF>{{ .Suffix }} <MID>
 			t.Errorf("expected status 200, got %d", w.Code)
 		}
 
-		if diff := cmp.Diff(mock.CompletionRequest.Prompt, "Help me write tests."); diff != "" {
+		if diff := cmp.Diff(mock.CompletionRequest.Prompt, "User: Hello! "); diff != "" {
 			t.Errorf("mismatch (-got +want):\n%s", diff)
 		}
+
+		checkChatResponse(t, w.Body, "test", "Hi!")
 	})
-}
+
+	w = createRequest(t, s.CreateModel

@@ -107,6 +107,8 @@ func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, pr
 	var systemFreeMemory uint64
 
 	totalMemory, freeMemory := gpu.GetCPUInfo()
+	log.Printf("CPU Info - Total Memory: %d, Free Memory: %d", totalMemory, freeMemory)
+
 
 	log.Printf("CPU Info - Total Memory: %d, Free Memory: %d", totalMemory, freeMemory)
 
