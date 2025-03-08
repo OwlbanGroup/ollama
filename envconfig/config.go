@@ -3,12 +3,10 @@ package envconfig
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"math"
 	"net"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -35,6 +33,7 @@ var (
 	FlashAttention bool
 	// Set via OLLAMA_HOST in the environment
 	Host *OllamaHost
+
 	// Set via OLLAMA_KEEP_ALIVE in the environment
 	KeepAlive time.Duration
 	// Set via OLLAMA_LLM_LIBRARY in the environment
@@ -129,6 +128,7 @@ func clean(key string) string {
 func init() {
 	// default values
 	NumParallel = 0 // Autoselect
+
 	MaxRunners = 0  // Autoselect
 	MaxQueuedRequests = 512
 	KeepAlive = 5 * time.Minute
@@ -175,7 +175,9 @@ func LoadConfig() {
 			)
 		}
 
-		// Try a few variations to improve developer experience when building from source in the local tree
+	// Try a few variations to improve developer experience when building from source in the local tree
+
+
 		for _, p := range paths {
 			candidate := filepath.Join(p, "ollama_runners")
 			_, err := os.Stat(candidate)
@@ -358,3 +360,5 @@ func loadKeepAlive(ka string) {
 		}
 	}
 }
+
+</final_file>

@@ -460,7 +460,8 @@ func CreateModel(ctx context.Context, name model.Name, modelFileDir, quantizatio
 						defer temp.Close()
 						defer os.Remove(temp.Name())
 
-						if err := llm.Quantize(blob, temp.Name(), want); err != nil {
+if err := llm.Quantize(blob, temp.Name()); err != nil {
+
 							return err
 						}
 

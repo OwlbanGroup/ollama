@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"runtime" // Added import for runtime
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-cmp/cmp"
@@ -18,6 +19,7 @@ import (
 	"github.com/ollama/ollama/gpu"
 	"github.com/ollama/ollama/llm"
 )
+
 
 type mockRunner struct {
 	llm.LlamaServer
@@ -866,4 +868,10 @@ func TestGenerate(t *testing.T) {
 		checkChatResponse(t, w.Body, "test", "Hi!")
 	})
 
-	w = createRequest(t, s.CreateModel
+	w = createRequest(t, s.CreateModelHandler, api.CreateRequest{
+		Model:     "test-system",
+		Modelfile: "FROM test\nSYSTEM You are a helpful assistant.",
+	})
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected
