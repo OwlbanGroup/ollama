@@ -3,6 +3,7 @@ package envconfig
 import (
 	"errors"
 	"fmt"
+	"log" // Ensure the log package is imported
 	"math"
 	"net"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"runtime" // Added import for runtime package
 )
 
 type OllamaHost struct {
@@ -130,6 +132,7 @@ func init() {
 	NumParallel = 0 // Autoselect
 
 	MaxRunners = 0  // Autoselect
+
 	MaxQueuedRequests = 512
 	KeepAlive = 5 * time.Minute
 
@@ -158,12 +161,14 @@ func LoadConfig() {
 		// On Windows we do not carry the payloads inside the main executable
 		appExe, err := os.Executable()
 		if err != nil {
-			slog.Error("failed to lookup executable path", "error", err)
+			log.Printf("failed to lookup executable path: %v", err)
+
 		}
 
 		cwd, err := os.Getwd()
 		if err != nil {
-			slog.Error("failed to lookup working directory", "error", err)
+			log.Printf("failed to lookup working directory: %v", err)
+
 		}
 
 		var paths []string
@@ -175,9 +180,7 @@ func LoadConfig() {
 			)
 		}
 
-	// Try a few variations to improve developer experience when building from source in the local tree
-
-
+		// Try a few variations to improve developer experience when building from source in the local tree
 		for _, p := range paths {
 			candidate := filepath.Join(p, "ollama_runners")
 			_, err := os.Stat(candidate)
@@ -187,7 +190,8 @@ func LoadConfig() {
 			}
 		}
 		if RunnersDir == "" {
-			slog.Error("unable to locate llm runner directory.  Set OLLAMA_RUNNERS_DIR to the location of 'ollama_runners'")
+			log.Printf("unable to locate llm runner directory. Set OLLAMA_RUNNERS_DIR to the location of 'ollama_runners'")
+
 		}
 	}
 
@@ -198,7 +202,8 @@ func LoadConfig() {
 	if onp := clean("OLLAMA_NUM_PARALLEL"); onp != "" {
 		val, err := strconv.Atoi(onp)
 		if err != nil {
-			slog.Error("invalid setting, ignoring", "OLLAMA_NUM_PARALLEL", onp, "error", err)
+		log.Printf("invalid setting, ignoring OLLAMA_NUM_PARALLEL=%s: %v", onp, err)
+
 		} else {
 			NumParallel = val
 		}
@@ -243,7 +248,8 @@ func LoadConfig() {
 	if maxRunners != "" {
 		m, err := strconv.Atoi(maxRunners)
 		if err != nil {
-			slog.Error("invalid setting, ignoring", "OLLAMA_MAX_LOADED_MODELS", maxRunners, "error", err)
+		log.Printf("invalid setting, ignoring OLLAMA_MAX_LOADED_MODELS=%s: %v", maxRunners, err)
+
 		} else {
 			MaxRunners = m
 		}
@@ -252,7 +258,8 @@ func LoadConfig() {
 	if onp := os.Getenv("OLLAMA_MAX_QUEUE"); onp != "" {
 		p, err := strconv.Atoi(onp)
 		if err != nil || p <= 0 {
-			slog.Error("invalid setting, ignoring", "OLLAMA_MAX_QUEUE", onp, "error", err)
+		log.Printf("invalid setting, ignoring OLLAMA_MAX_QUEUE=%s: %v", onp, err)
+
 		} else {
 			MaxQueuedRequests = p
 		}
@@ -266,12 +273,14 @@ func LoadConfig() {
 	var err error
 	ModelsDir, err = getModelsDir()
 	if err != nil {
-		slog.Error("invalid setting", "OLLAMA_MODELS", ModelsDir, "error", err)
+		log.Printf("invalid setting for OLLAMA_MODELS=%s: %v", ModelsDir, err)
+
 	}
 
 	Host, err = getOllamaHost()
 	if err != nil {
-		slog.Error("invalid setting", "OLLAMA_HOST", Host, "error", err, "using default port", Host.Port)
+		log.Printf("invalid setting for OLLAMA_HOST=%s: %v, using default port %s", Host, err, Host.Port)
+
 	}
 
 	if set, err := strconv.ParseBool(clean("OLLAMA_INTEL_GPU")); err == nil {
@@ -360,5 +369,3 @@ func loadKeepAlive(ka string) {
 		}
 	}
 }
-
-</final_file>

@@ -8,14 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"runtime" // Added import for runtime
 )
 
 
-var RocmStandardLocations = []string{
-    "lib/*.so",
-    "lib/*.a",
-    "lib/*.dylib",
 
+var RocmStandardLocations = []string{
     "lib/*.so",
     "lib/*.a",
     "lib/*.dylib",
@@ -24,6 +22,7 @@ var RocmStandardLocations = []string{
     "/usr/lib/rocm",
     "/usr/local/lib/rocm",
 }
+
 
 var projectorMemoryRequirements = map[string]int{
     "minimum": 2048, // Minimum memory requirement in MB
@@ -43,7 +42,12 @@ func rocmLibUsable(libDir string) bool {
 
 	slog.Debug("evaluating potential rocm lib dir " + libDir)
 	for _, g := range ROCmLibGlobs {
-		res, _ := filepath.Glob(filepath.Join(libDir, g))
+		res, err := filepath.Glob(filepath.Join(libDir, g))
+		if err != nil {
+			slog.Debug("error checking ROCm lib dir: " + err.Error())
+			return false
+		}
+
 		if len(res) == 0 {
 			return false
 		}
@@ -64,6 +68,8 @@ func GetSupportedGFX(libDir string) ([]string, error) {
 }
 
 func rocmGetVisibleDevicesEnv(gpuInfo []GpuInfo) (string, string) {
+	// This function is currently unused and can be removed
+
 	ids := []string{}
 	for _, info := range gpuInfo {
 		if info.Library != "rocm" {
@@ -77,6 +83,8 @@ func rocmGetVisibleDevicesEnv(gpuInfo []GpuInfo) (string, string) {
 }
 
 func commonAMDValidateLibDir() (string, error) {
+	// This function is currently unused and can be removed
+
 	// Favor our bundled version
 
 	// Installer payload location if we're running the installed binary
@@ -100,6 +108,8 @@ func commonAMDValidateLibDir() (string, error) {
 	}
 
 	// Scan the LD_LIBRARY_PATH or PATH
+	// This function is currently unused and can be removed
+
 	pathEnv := "LD_LIBRARY_PATH"
 	if runtime.GOOS == "windows" {
 		pathEnv = "PATH"
@@ -124,4 +134,6 @@ func commonAMDValidateLibDir() (string, error) {
 	}
 
 	return "", fmt.Errorf("no suitable rocm found, falling back to CPU")
+	// This function is currently unused and can be removed
+
 }

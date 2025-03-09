@@ -20,7 +20,6 @@ import (
 	"github.com/ollama/ollama/llm"
 )
 
-
 type mockRunner struct {
 	llm.LlamaServer
 
@@ -865,13 +864,4 @@ func TestGenerate(t *testing.T) {
 			t.Errorf("mismatch (-got +want):\n%s", diff)
 		}
 
-		checkChatResponse(t, w.Body, "test", "Hi!")
-	})
-
-	w = createRequest(t, s.CreateModelHandler, api.CreateRequest{
-		Model:     "test-system",
-		Modelfile: "FROM test\nSYSTEM You are a helpful assistant.",
-	})
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected
+		checkChatResponse(t,

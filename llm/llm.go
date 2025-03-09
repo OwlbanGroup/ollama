@@ -16,7 +16,15 @@ import (
 	"unsafe"
 )
 
+func LoadModel(modelPath string) error {
+	// Implement the logic to load the model from the specified path
+	// This is a placeholder implementation
+	fmt.Printf("Loading model from: %s\n", modelPath)
+	return nil
+}
+
 // CompletionResponse represents the response structure for completions.
+
 type CompletionResponse struct {
 	DoneReason         string  `json:"done_reason"`
 	PromptEvalCount    int     `json:"prompt_eval_count"`

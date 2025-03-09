@@ -30,6 +30,10 @@ const (
 )
 
 func loadModel(cmd *cobra.Command, opts *runOptions) error {
+    if opts == nil {
+        return errors.New("options cannot be nil")
+    }
+
 	p := progress.NewProgress(os.Stderr)
 	defer p.StopAndClear()
 
@@ -58,10 +62,6 @@ func loadModel(cmd *cobra.Command, opts *runOptions) error {
 				fmt.Println()
 				fmt.Println()
 			}
-		}
-		return nil
-	})
-}
 
 func generateInteractive(cmd *cobra.Command, opts runOptions) error {
 	err := loadModel(cmd, &opts)
