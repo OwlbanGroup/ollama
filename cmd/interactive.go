@@ -51,7 +51,7 @@ func loadModel(cmd *cobra.Command, opts *runOptions) error {
 	}
 
 	return client.Chat(cmd.Context(), chatReq, func(resp api.ChatResponse) error {
-		p.StopAndClear()
+		// Missing closing brace for the function
 		for _, msg := range opts.Messages {
 			switch msg.Role {
 			case "user":
