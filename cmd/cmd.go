@@ -1,28 +1,16 @@
 package cmd
 
 import (
-	"errors"
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-
+	"os" // Added import for os
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/ollama/ollama/api"
-	"github.com/ollama/ollama/parser"
 	"github.com/ollama/ollama/progress"
+	"github.com/ollama/ollama/parser"
 )
 
 // CreateHandler handles the creation of a model from a Modelfile.
 func CreateHandler(filename string, cmd *cobra.Command) error {
-	client, err := api.ClientFromEnvironment()
-	if err != nil {
-		logrus.Error(err)
-		return err
-	}
-
 	p := progress.NewProgress(os.Stderr)
 	defer p.Stop()
 
@@ -34,12 +22,6 @@ func CreateHandler(filename string, cmd *cobra.Command) error {
 	defer f.Close()
 
 	modelfile, err := parser.ParseFile(f)
-	if err != nil {
-		logrus.Error(err)
-		return err
-	}
-
-	home, err := os.UserHomeDir()
 	if err != nil {
 		logrus.Error(err)
 		return err

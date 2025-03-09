@@ -10,7 +10,8 @@ import (
 
 func TestIntegrationMultimodal(t *testing.T) {
 	// Decode the base64 image and prepare the request
-	imageBase64 := "..." // Replace with actual base64 image string
+	imageBase64 := "iVBORw0KGgoAAAANSUhEUgAAAAUA" // Example base64 image string
+
 	request := llm.CreateRequest(imageBase64)
 
 	// Send the request to the multimodal model
@@ -19,6 +20,7 @@ func TestIntegrationMultimodal(t *testing.T) {
 
 	// Check the response
 	assert.NotNil(t, response)
-	assert.Contains(t, response.Content, "expected substring") // Adjust based on expected response
+	assert.Contains(t, response.Content, "expected output from model") // Adjust based on expected response
+
 	assert.Equal(t, true, response.Done) // Ensure the response indicates completion
 }

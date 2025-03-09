@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/spf13/cobra"
+	"github.com/ollama/ollama/api"
 
 	"github.com/ollama/ollama/api"
 	"github.com/ollama/ollama/envconfig"
@@ -52,10 +52,10 @@ func loadModel(cmd *cobra.Command, opts *runOptions) error {
 
 	return client.Chat(cmd.Context(), chatReq, func(resp api.ChatResponse) error {
 		// Missing closing brace for the function
+
+		// Missing closing brace for the function
 		for _, msg := range opts.Messages {
 			switch msg.Role {
-			case "user":
-				fmt.Printf(">>> %s\n", msg.Content)
 			case "assistant":
 				state := &displayResponseState{}
 				displayResponse(msg.Content, opts.WordWrap, state)

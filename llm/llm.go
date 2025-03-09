@@ -14,17 +14,20 @@ import "C"
 import (
 	"fmt"
 	"unsafe"
+	"github.com/ollama/ollama/common" // Added import for common package
 )
 
 func LoadModel(modelPath string) error {
-	// Implement the logic to load the model from the specified path
-	// This is a placeholder implementation
+	model := C.llama_load_model(C.CString(modelPath))
+	if model == nil {
+		return fmt.Errorf("failed to load model from path: %s", modelPath)
+	}
+
 	fmt.Printf("Loading model from: %s\n", modelPath)
 	return nil
 }
 
 // CompletionResponse represents the response structure for completions.
-
 type CompletionResponse struct {
 	DoneReason         string  `json:"done_reason"`
 	PromptEvalCount    int     `json:"prompt_eval_count"`
@@ -42,12 +45,12 @@ type ImageData struct {
 
 // CompletionRequest represents the request structure for completions.
 type CompletionRequest struct {
-	Prompt     string `json:"prompt"`
-	MaxTokens  int    `json:"max_tokens"`
-	Temperature float64 `json:"temperature"`
-	TopP       float64 `json:"top_p"`
+	Prompt     string     `json:"prompt"`
+	MaxTokens  int        `json:"max_tokens"`
+	Temperature float64    `json:"temperature"`
+	TopP       float64    `json:"top_p"`
 	Images     []ImageData `json:"images,omitempty"`
-	Format     string `json:"format,omitempty"`
+	Format     string     `json:"format,omitempty"`
 }
 
 func SystemInfo() string {

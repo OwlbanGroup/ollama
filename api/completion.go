@@ -1,5 +1,7 @@
 package api
 
+// Removed import of common to eliminate potential circular dependency
+
 type CompletionRequest struct {
 	Prompt     string  `json:"prompt"`
 	Temperature float64 `json:"temperature"`
