@@ -8,7 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ollama/ollama/api"
+	// Removed import of api package
+
 )
 
 func TestExtractFilenames(t *testing.T) {
@@ -59,10 +60,11 @@ func TestModelfileBuilder(t *testing.T) {
 	opts := runOptions{
 		Model:    "hork",
 		System:   "You are part horse and part shark, but all hork. Do horklike things",
-		Messages: []api.Message{
+		Messages: []Message{
 			{Role: "user", Content: "Hey there hork!"},
 			{Role: "assistant", Content: "Yes it is true, I am half horse, half shark."},
 		},
+
 		Options: map[string]interface{}{},
 	}
 
@@ -71,7 +73,9 @@ func TestModelfileBuilder(t *testing.T) {
 	opts.Options["penalize_newline"] = false
 	opts.Options["stop"] = []string{"hi", "there"}
 
-	mf := buildModelfile(opts)
+	mf, err := buildModelfile(opts)
+	require.NoError(t, err)
+
 	expectedModelfile := `FROM {{.Model}}
 SYSTEM """{{.System}}"""
 PARAMETER penalize_newline false
@@ -91,8 +95,11 @@ MESSAGE assistant """Yes it is true, I am half horse, half shark."""
 	require.NoError(t, err)
 	assert.Equal(t, buf.String(), mf)
 
-	opts.ParentModel = "horseshark"
-	mf = buildModelfile(opts)
+	opts.ParentModel = "horseshark" // Ensure ParentModel is set
+
+	mf, err = buildModelfile(opts) // Capture both return values
+	require.NoError(t, err)
+
 	expectedModelfile = `FROM {{.ParentModel}}
 SYSTEM """{{.System}}"""
 PARAMETER penalize_newline false

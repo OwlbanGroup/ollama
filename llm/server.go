@@ -1,18 +1,10 @@
 package llm
 
 import (
-	"context" // Added import for context
-	// "net/http" // Removed unused import
-	// "github.com/gin-gonic/gin" // Removed unused import
+	// "context" // Removed unused import
 
 	"github.com/ollama/ollama/api" // Ensure api is imported
 )
-
-
-
-
-
-
 
 // LlamaServer represents the server for handling requests
 type LlamaServer struct {
@@ -30,8 +22,6 @@ func NewLlamaServer(address string, port int) *LlamaServer {
 
 // Completion handles completion requests
 func (s *LlamaServer) Completion(req api.CompletionRequest) (api.CompletionResponse, error) {
-func (s *LlamaServer) Completion(req api.CompletionRequest) (api.CompletionResponse, error) {
-
 	// Implementation for handling completion requests
 	return api.CompletionResponse{
 		Content: "This is a placeholder response.",

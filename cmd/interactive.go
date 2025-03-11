@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/ollama/ollama/api"
-
+	"github.com/ollama/ollama/envconfig"
 	"github.com/ollama/ollama/api"
 	"github.com/ollama/ollama/envconfig"
 	"github.com/ollama/ollama/progress"
@@ -64,7 +64,7 @@ func loadModel(cmd *cobra.Command, opts *runOptions) error {
 			}
 
 func generateInteractive(cmd *cobra.Command, opts runOptions) error {
-	err := loadModel(cmd, &opts)
+	// Ensure proper closure of loadModel function
 	if err != nil {
 		return err
 	}

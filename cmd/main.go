@@ -2,12 +2,20 @@ package cmd
 
 import (
 	"log"
-	"time" // Added import for time package
+
 	"github.com/ollama/ollama/common" // Added import for common package
+	"context" // Importing context package
+
 	"github.com/spf13/cobra"
+	// Removed import of cmd package
+
+
 )
 
+
+
 func main() {
+
 	// Initialize the Llama server
 	llamaServer := common.LlamaServer{
 		Address: "localhost",

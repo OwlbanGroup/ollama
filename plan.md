@@ -1,20 +1,20 @@
-### Plan to Address "undefined: runtime" Issue
+### Plan to Address "import cycle not allowed in test" Issue
 
-1. **`gpu/amd_windows.go`**
-   - Review the usage of the `runtime` package and ensure that any necessary runtime information is being utilized effectively. If there are any missing implementations or checks, add them to enhance functionality.
+1. **Refactor `integration/llm_test.go`**:
+   - Move the relevant test functions to a new package or file that does not create a circular dependency with the `api` package.
+   - Ensure that any necessary interfaces or types used in the tests are defined in a way that avoids direct imports from `api` if possible.
 
-2. **`envconfig/config.go`**
-   - Verify that the configurations set based on the runtime environment are functioning correctly. If any issues are identified, make adjustments to ensure proper handling of environment variables.
+2. **Review and Update Imports**:
+   - Check all import statements in the affected files (`common/runner.go`, `cmd/cmd_test.go`, `integration/llm_test.go`, and `api/model.go`) to ensure that they do not create circular dependencies.
+   - Remove or replace any imports that lead to cycles.
 
-3. **`gpu/gpu_test.go`**
-   - Ensure that the tests are comprehensive and cover all scenarios related to runtime. If any tests are failing due to runtime issues, modify them accordingly to ensure they pass.
+3. **Test the Changes**:
+   - After making the changes, run the tests to ensure that the import cycle issue is resolved and that all tests pass successfully.
 
-4. **`gpu/assets.go`**
-   - Review the logic for updating the PATH environment variable based on the OS. Ensure that it is functioning as intended and make any necessary adjustments.
-
-5. **`gpu/gpu_info.go`**
-   - Confirm that the functions for retrieving GPU and CPU information are working correctly. If there are any issues related to runtime, address them to ensure accurate information retrieval.
+4. **Documentation**:
+   - Update any relevant documentation to reflect the changes made to the structure of the code and the organization of tests.
 
 ### Follow-up Steps:
-- After making the necessary changes, run the tests to verify that everything is functioning correctly.
-- Document any changes made for future reference.
+
+- Verify the changes in the files.
+- Confirm with the user for any additional requirements or modifications.
